@@ -1,0 +1,25 @@
+{
+  "name": "couchdb-replicate-views",
+  "version": "0.0.0",
+  "description": "Replicate CouchDB Views after a migration or fresh install",
+  "main": "bin/couchdb-replicate-views",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "keywords": [
+    "couchdb",
+    "replicate",
+    "views"
+  ],
+  "author": "nuno job (@dscape)",
+  "license": "mit",
+  "dependencies": {
+    "nano": "~3.3.6",
+    "frameless": "0.0.5",
+    "p": "~0.2.0"
+  },
+  "bin": {
+    "couchdb-replicate-views": "bin/couchdb-replicate-views"
+  }
+}

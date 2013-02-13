@@ -1,0 +1,92 @@
+#!/usr/bin/env node
+
+var frameless = require('frameless')
+  , url       = require('url')
+  , nano      = require('nano')
+  ;
+
+var p     = require('p')
+  , map   = p()
+  , foldl = p()
+  , f, l, z, ac, cb
+  ;
+
+map(f, [], ac, cb, function (f, l, ac, cb) {
+  return cb(ac);
+});
+map(f, l, ac, cb, function (f, l, ac, cb) {
+  f(l.shift(), function(x) {
+    ac.push(x);
+    map(f, l, ac, cb); // l is now tail
+  });
+});
+
+foldl(f, z, [], cb, function (f, z, l, cb) { cb(z); });
+foldl(f, z, l, cb, function (f, z, l, cb) {
+  f(z, l.shift(), function (new_z) {
+    foldl(f, new_z, l, cb);
+  });
+});
+
+frameless(
+    { name: 'origin', 'default': 'http://localhost:5984' },
+    { name: 'target', 'default': 'http://another:5984'}, function (opts) {
+
+      var origin = nano(opts.origin)
+        , target = nano(opts.target)
+        ;
+
+      origin.db.list(function (err, dbs) {
+        if(err) {
+          return frameless.err(err.message, 'listdbfail');
+        }
+
+        function replicate_views_for_db(_, db, next) {
+          if(db.indexOf('_') === 0) {
+            return next();
+          }
+
+          function replicate_one_view(d, next) {
+            var current = target.use(db);
+            delete d.doc._rev;
+            current.insert(d.doc, function (err, resp) {
+              if (err) {
+                frameless.err(db + '/' + d.id, 'fuu');
+                frameless.err(err);
+              } else {
+                frameless.info(db + '/' + d.id, 'yay');
+              }
+              next(d.id);
+            });
+          }
+
+          origin.dinosaur(
+            { path: db + '/_all_docs'
+            , params:
+              { "startkey": "_design/"
+              , "endkey": "_design0"
+              , "include_docs": true
+              }
+          }, function (err, ddocs) {
+            if(err) {
+              frameless.err(err.message, 'ddocsfail');
+              return next();
+            }
+
+            if(!Array.isArray(ddocs.rows)) {
+              frameless.warn(JSON.stringify(ddocs), 'noddocs');
+              return next();
+            }
+
+            map(replicate_one_view, ddocs.rows, [], function () {
+              next();
+            });
+          });
+        }
+
+      foldl(replicate_views_for_db, null, dbs, function () {
+        frameless.info('dino out!');
+      });
+
+    });
+  });
